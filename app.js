@@ -1705,6 +1705,17 @@ function initAuth() {
   supabaseClient.auth.getSession().then(({ data }) => {
     if (!data.session) showLoginView();
   });
+
+  // Keep-alive heartbeat pour éviter que Supabase s'endorme / soit mis en pause
+  setInterval(async () => {
+    if (supabaseClient && currentUser) {
+      try {
+        await supabaseClient.from('tournages').select('id').limit(1);
+      } catch(e) {
+        console.warn('Heartbeat Supabase:', e);
+      }
+    }
+  }, 4 * 60 * 1000); // Ping toutes les 4 minutes si l'utilisateur est connecté
 }
 
 // Allow Enter key on login form
