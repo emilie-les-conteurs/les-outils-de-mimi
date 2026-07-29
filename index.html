@@ -11,7 +11,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<style>
+<link rel="stylesheet" href="style.css">
+<script defer src="app.js"></script>
+</head>
 /* ─── RESET & BASE ─────────────────────────────────── */
 :root {
   /* LIGHT MODE (défaut) */
@@ -637,7 +639,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
   </div>
 </div>
 
-<div class="view active" id="view-dashboard">
+<div class="view" id="view-dashboard">
   <div class="dash-header">
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="dash-logo" style="color:var(--text);font-weight:700;letter-spacing:.04em;">LES OUTILS DE MIMI</div>
@@ -978,8 +980,6 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
   </div>
 </div>
 
-<!-- Supabase modal removed - credentials hardcoded -->
-
 <!-- ══ MODAL: Renommer + dater un jour ══ -->
 <div class="modal-overlay" id="day-edit-overlay">
   <div class="new-proj-modal">
@@ -1017,35 +1017,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
       <button class="btn primary" style="flex:2" onclick="generatePDF()">Générer →</button>
     </div>
   </div>
-</div>
-
 <script>
-// ═══════════════════════════════════════════════════
-// CONSTANTS & STATE
-// ═══════════════════════════════════════════════════
-const DAY_COLORS = ['#c8f560','#60c8f5','#f5a623','#f560c8','#60f5a6','#ff6b6b','#a660f5','#f5c860'];
-
-// All projects stored in localStorage as { projects: [{id, name, days:[...]}] }
-let db = { projects: [] };
-let currentProjectId = null;
-let supabaseClient = null;
-let pendingLocation = null;
-let pendingEditLocation = null;
-let pendingModal = null;
-let mapLayers = {};
-let mapInitialized = false;
-let mapInstance = null;
-let pdfSelectedDays = new Set();
-
-function currentProject() { return db.projects.find(p => p.id === currentProjectId); }
-function activeDay() { const p = currentProject(); return p ? p.days[p.activeDay || 0] : null; }
-
-// ═══════════════════════════════════════════════════
-// PERSISTENCE — clé par utilisateur pour isoler les données
-// ═══════════════════════════════════════════════════
-function localKey() {
-  return currentUser ? `tp_db_${currentUser.id}` : 'tp_db_anon';
-}
 function saveLocal() { localStorage.setItem(localKey(), JSON.stringify(db)); }
 function loadLocal() {
   // On ne charge qu'après avoir un user — appelé depuis loadUserProjects
@@ -1078,11 +1050,46 @@ async function loadAllFromSupabase() {
 // ═══════════════════════════════════════════════════
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + id).classList.add('active');
+  const viewEl = document.getElementById('view-' + id);
+  if (viewEl) viewEl.classList.add('active');
+  try {
+    localStorage.setItem('tp_active_view', id);
+    if (id !== 'planner') {
+      window.location.hash = id;
+    }
+  } catch(e) {}
+}
+
+function restoreLastState() {
+  const activeView = localStorage.getItem('tp_active_view');
+  const activeProjId = localStorage.getItem('tp_active_project_id');
+  const hashView = window.location.hash.replace('#', '');
+
+  const targetView = hashView || activeView;
+
+  if (targetView === 'surligneur') {
+    showView('surligneur');
+  } else if (targetView === 'planner-hub') {
+    showView('planner-hub');
+    renderDashboard();
+  } else if (targetView === 'planner' && activeProjId) {
+    const proj = db.projects.find(p => p.id === activeProjId);
+    if (proj) {
+      openProject(activeProjId);
+    } else {
+      showAppView();
+    }
+  } else if (targetView === 'admin' && isAdmin()) {
+    showView('admin');
+    renderAdminDashboard();
+  } else {
+    showAppView();
+  }
 }
 
 function goToDashboard() {
   saveLocal();
+  try { localStorage.removeItem('tp_active_project_id'); } catch(e) {}
   if (isAdmin()) {
     showView('admin');
     renderAdminDashboard();
@@ -1093,6 +1100,7 @@ function goToDashboard() {
 
 function goToPlannerHub() {
   saveLocal();
+  try { localStorage.removeItem('tp_active_project_id'); } catch(e) {}
   showView('planner-hub');
   renderDashboard();
 }
@@ -1332,6 +1340,7 @@ function openProject(id) {
   const proj = currentProject();
   if (!proj) return;
   if (!proj.activeDay) proj.activeDay = 0;
+  try { localStorage.setItem('tp_active_project_id', id); } catch(e) {}
   document.getElementById('planner-proj-name').textContent = proj.name;
   showView('planner');
   initMap();
@@ -2797,7 +2806,7 @@ function initAuth() {
       currentUser = session.user;
       updateSbUI(true);
       updateUserUI(currentUser);
-      loadUserProjects().then(() => showAppView());
+      loadUserProjects().then(() => restoreLastState());
     } else {
       currentUser = null;
       showLoginView();
