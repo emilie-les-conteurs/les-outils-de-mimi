@@ -1540,66 +1540,164 @@ function updateSbUI(on) {
 let currentUser = null;
 let authMode = 'login'; // 'login' | 'signup'
 
+function toggleAuthMode(mode) {
+  authMode = mode;
+  setAuthError('');
+  const tabLogin = document.getElementById('tab-login');
+  const tabSignup = document.getElementById('tab-signup');
+  const nameWrap = document.getElementById('signup-name-wrap');
+  const pwdConfirmWrap = document.getElementById('signup-pwd-confirm-wrap');
+  const forgotWrap = document.getElementById('forgot-pwd-wrap');
+  const submitBtn = document.getElementById('auth-submit-btn');
+
+  if (mode === 'signup') {
+    tabLogin.style.background = 'transparent';
+    tabLogin.style.color = 'var(--muted)';
+    tabLogin.style.boxShadow = 'none';
+    tabLogin.style.fontWeight = '500';
+
+    tabSignup.style.background = 'var(--surface)';
+    tabSignup.style.color = 'var(--text)';
+    tabSignup.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    tabSignup.style.fontWeight = '600';
+
+    if (nameWrap) nameWrap.style.display = 'block';
+    if (pwdConfirmWrap) pwdConfirmWrap.style.display = 'block';
+    if (forgotWrap) forgotWrap.style.display = 'none';
+    if (submitBtn) submitBtn.textContent = 'Créer mon compte';
+  } else {
+    tabSignup.style.background = 'transparent';
+    tabSignup.style.color = 'var(--muted)';
+    tabSignup.style.boxShadow = 'none';
+    tabSignup.style.fontWeight = '500';
+
+    tabLogin.style.background = 'var(--surface)';
+    tabLogin.style.color = 'var(--text)';
+    tabLogin.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    tabLogin.style.fontWeight = '600';
+
+    if (nameWrap) nameWrap.style.display = 'none';
+    if (pwdConfirmWrap) pwdConfirmWrap.style.display = 'none';
+    if (forgotWrap) forgotWrap.style.display = 'block';
+    if (submitBtn) submitBtn.textContent = 'Se connecter';
+  }
+}
+
 function showLoginView() {
   document.querySelectorAll('.view, .view-login').forEach(v => v.classList.remove('active'));
   document.getElementById('view-login').classList.add('active');
 }
 
-// showAppView defined in admin section
-
 function setAuthError(msg) {
   const el = document.getElementById('auth-error');
-  el.textContent = msg;
-  el.classList.toggle('show', !!msg);
+  if (el) {
+    el.textContent = msg;
+    el.classList.toggle('show', !!msg);
+  }
 }
-
-
 
 async function authForgotPassword() {
   const email = document.getElementById('auth-email').value.trim();
-  if (!email) { setAuthError('Entre ton email pour réinitialiser le mot de passe'); return; }
+  if (!email) { setAuthError('Entrez votre email pour réinitialiser le mot de passe'); return; }
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin
   });
   if (error) setAuthError(error.message);
   else setAuthError('');
-  // Show confirmation
   const sub = document.getElementById('login-sub');
-  sub.textContent = 'Email envoyé ! Vérifie ta boîte mail.';
+  sub.textContent = 'Email envoyé ! Vérifiez votre boîte mail.';
   sub.style.color = 'var(--accent)';
-  setTimeout(() => { sub.textContent = 'Accédez à vos projets de tournage'; sub.style.color = ''; }, 5000);
+  setTimeout(() => { sub.textContent = 'Accédez à vos outils'; sub.style.color = ''; }, 5000);
 }
 
 async function authSubmit() {
   if (!supabaseClient) { setAuthError('BDD non configurée'); return; }
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
+
   if (!email || !password) { setAuthError('Email et mot de passe requis'); return; }
 
   const btn = document.getElementById('auth-submit-btn');
-  btn.textContent = '...'; btn.disabled = true;
+  btn.disabled = true;
   setAuthError('');
 
-  try {
-    let result;
-    result = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (authMode === 'signup') {
+    const name = document.getElementById('auth-name').value.trim();
+    const passwordConfirm = document.getElementById('auth-password-confirm').value;
 
-    if (result.error) {
-      const msg = result.error.message;
-      if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
-        setAuthError('Email ou mot de passe incorrect');
-      } else if (msg.includes('Email not confirmed')) {
-        setAuthError('Confirmez votre email avant de vous connecter');
-      } else {
-        setAuthError(msg);
-      }
+    if (!name) {
+      setAuthError('Veuillez entrer un nom ou pseudonyme');
+      btn.disabled = false;
+      return;
     }
-    // If login OK, onAuthStateChange will handle redirect
-  } catch(e) {
-    setAuthError('Erreur: ' + e.message);
-  } finally {
-    btn.textContent = 'Se connecter';
-    btn.disabled = false;
+    if (password.length < 6) {
+      setAuthError('Le mot de passe doit contenir au moins 6 caractères');
+      btn.disabled = false;
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setAuthError('Les mots de passe ne correspondent pas');
+      btn.disabled = false;
+      return;
+    }
+
+    btn.textContent = 'Création du compte...';
+    try {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name: name, display_name: name }
+        }
+      });
+      if (error) {
+        if (error.message.includes('User already registered')) {
+          setAuthError('Un compte existe déjà avec cet email.');
+        } else {
+          setAuthError(error.message);
+        }
+      } else {
+        if (data.session) {
+          currentUser = data.session.user;
+          updateSbUI(true);
+          updateUserUI(currentUser);
+          loadUserProjects().then(() => showAppView());
+        } else {
+          const pending = document.getElementById('login-pending');
+          if (pending) {
+            pending.style.display = 'block';
+            pending.textContent = `Un email de confirmation a été envoyé à ${email} ✓`;
+          }
+        }
+      }
+    } catch(e) {
+      setAuthError('Erreur: ' + e.message);
+    } finally {
+      btn.textContent = 'Créer mon compte';
+      btn.disabled = false;
+    }
+
+  } else {
+    // Mode Connexion
+    btn.textContent = 'Connexion...';
+    try {
+      const result = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (result.error) {
+        const msg = result.error.message;
+        if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
+          setAuthError('Email ou mot de passe incorrect');
+        } else if (msg.includes('Email not confirmed')) {
+          setAuthError('Confirmez votre email avant de vous connecter');
+        } else {
+          setAuthError(msg);
+        }
+      }
+    } catch(e) {
+      setAuthError('Erreur: ' + e.message);
+    } finally {
+      btn.textContent = 'Se connecter';
+      btn.disabled = false;
+    }
   }
 }
 
@@ -1616,7 +1714,6 @@ async function authSignOut() {
   if (supabaseClient) await supabaseClient.auth.signOut();
   currentUser = null;
   db = { projects: [] };
-  // Reset surligneur state
   surDb = { projects: [] };
   surCurrentProjectId = null;
   surDirty = false;
@@ -1630,21 +1727,26 @@ async function authSignOut() {
 
 function updateUserUI(user) {
   if (!user) return;
-  const email = user.email || '';
-  const initials = email.substring(0, 2).toUpperCase();
-  // Dashboard header avatar
+  const displayName = user.user_metadata?.name || user.user_metadata?.display_name || user.email || '';
+  const initials = displayName.substring(0, 2).toUpperCase();
+
   const dashAvatar = document.getElementById('user-avatar-dash');
   if (dashAvatar) dashAvatar.textContent = initials;
-  // Legacy elements (kept for compat)
+
   const avatarEl = document.getElementById('user-avatar');
   const labelEl = document.getElementById('user-email-label');
   if (avatarEl) avatarEl.textContent = initials;
-  if (labelEl) labelEl.textContent = email;
-  // Admin header
+  if (labelEl) labelEl.textContent = displayName;
+
   const adminAvatar = document.getElementById('admin-avatar');
   const adminLabel = document.getElementById('admin-email-label');
   if (adminAvatar) adminAvatar.textContent = initials;
-  if (adminLabel) adminLabel.textContent = email;
+  if (adminLabel) adminLabel.textContent = displayName;
+
+  const avatarHub = document.getElementById('user-avatar-planner');
+  const emailHub = document.getElementById('user-email-planner');
+  if (avatarHub) avatarHub.textContent = initials;
+  if (emailHub) emailHub.textContent = displayName;
 }
 
 async function loadUserProjects() {

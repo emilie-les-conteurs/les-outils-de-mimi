@@ -589,15 +589,35 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 <div class="view-login" id="view-login">
   <div class="login-card">
     <div class="login-logo">Les outils de MIMI</div>
-    <div class="login-sub" id="login-sub">Connectez-vous pour accéder à vos outils</div>
+    <div class="login-sub" id="login-sub">Accédez à vos outils</div>
+
+    <!-- Onglets Connexion / Inscription -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;background:var(--s2);padding:4px;border-radius:9px;border:1px solid var(--border)">
+      <button id="tab-login" onclick="toggleAuthMode('login')" style="flex:1;padding:7px;border-radius:6px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.1)">Connexion</button>
+      <button id="tab-signup" onclick="toggleAuthMode('signup')" style="flex:1;padding:7px;border-radius:6px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted)">Créer un compte</button>
+    </div>
 
     <div id="login-form-wrap">
+      <!-- Champ Pseudonyme / Nom (visible uniquement en Mode Inscription) -->
+      <div id="signup-name-wrap" style="display:none">
+        <label class="login-label">Nom / Pseudonyme</label>
+        <input type="text" class="login-input" id="auth-name" placeholder="Mimi" autocomplete="name">
+      </div>
+
       <label class="login-label">Email</label>
       <input type="email" class="login-input" id="auth-email" placeholder="vous@exemple.com" autocomplete="email">
+      
       <label class="login-label" id="pwd-label">Mot de passe</label>
       <input type="password" class="login-input" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+
+      <!-- Champ Confirmation de mot de passe (visible uniquement en Mode Inscription) -->
+      <div id="signup-pwd-confirm-wrap" style="display:none">
+        <label class="login-label">Confirmer le mot de passe</label>
+        <input type="password" class="login-input" id="auth-password-confirm" placeholder="••••••••" autocomplete="new-password">
+      </div>
+
       <div class="login-error" id="auth-error"></div>
-      <button class="btn primary" style="width:100%;padding:11px;font-size:12px" id="auth-submit-btn" onclick="authSubmit()">Se connecter</button>
+      <button class="btn primary" style="width:100%;padding:11px;font-size:12px;margin-top:4px" id="auth-submit-btn" onclick="authSubmit()">Se connecter</button>
 
       <div class="login-divider"><div class="login-divider-line"></div><div class="login-divider-text">ou</div><div class="login-divider-line"></div></div>
 
@@ -606,7 +626,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
         Continuer avec Google
       </button>
 
-      <div class="login-switch" style="margin-top:8px">
+      <div class="login-switch" style="margin-top:8px" id="forgot-pwd-wrap">
         <a onclick="authForgotPassword()" style="color:var(--muted)">Mot de passe oublié ?</a>
       </div>
     </div>
