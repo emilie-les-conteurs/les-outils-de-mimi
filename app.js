@@ -53,11 +53,46 @@ async function saveToSupabase(proj) {
 // ═══════════════════════════════════════════════════
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + id).classList.add('active');
+  const viewEl = document.getElementById('view-' + id);
+  if (viewEl) viewEl.classList.add('active');
+  try {
+    localStorage.setItem('tp_active_view', id);
+    if (id !== 'planner') {
+      window.location.hash = id;
+    }
+  } catch(e) {}
+}
+
+function restoreLastState() {
+  const activeView = localStorage.getItem('tp_active_view');
+  const activeProjId = localStorage.getItem('tp_active_project_id');
+  const hashView = window.location.hash.replace('#', '');
+
+  const targetView = hashView || activeView;
+
+  if (targetView === 'surligneur') {
+    showView('surligneur');
+  } else if (targetView === 'planner-hub') {
+    showView('planner-hub');
+    renderDashboard();
+  } else if (targetView === 'planner' && activeProjId) {
+    const proj = db.projects.find(p => p.id === activeProjId);
+    if (proj) {
+      openProject(activeProjId);
+    } else {
+      showAppView();
+    }
+  } else if (targetView === 'admin' && isAdmin()) {
+    showView('admin');
+    renderAdminDashboard();
+  } else {
+    showAppView();
+  }
 }
 
 function goToDashboard() {
   saveLocal();
+  try { localStorage.removeItem('tp_active_project_id'); } catch(e) {}
   if (isAdmin()) {
     showView('admin');
     renderAdminDashboard();
@@ -68,6 +103,7 @@ function goToDashboard() {
 
 function goToPlannerHub() {
   saveLocal();
+  try { localStorage.removeItem('tp_active_project_id'); } catch(e) {}
   showView('planner-hub');
   renderDashboard();
 }
@@ -307,6 +343,7 @@ function openProject(id) {
   const proj = currentProject();
   if (!proj) return;
   if (!proj.activeDay) proj.activeDay = 0;
+  try { localStorage.setItem('tp_active_project_id', id); } catch(e) {}
   document.getElementById('planner-proj-name').textContent = proj.name;
   showView('planner');
   initMap();
@@ -1796,7 +1833,7 @@ function initAuth() {
       currentUser = session.user;
       updateSbUI(true);
       updateUserUI(currentUser);
-      loadUserProjects().then(() => showAppView());
+      loadUserProjects().then(() => restoreLastState());
     } else {
       currentUser = null;
       showLoginView();
