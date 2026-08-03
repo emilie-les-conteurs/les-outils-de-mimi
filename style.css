@@ -189,7 +189,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
    MODALS
 ═══════════════════════════════════════════════════ */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:4000;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
-.modal-overlay.show{display:flex;}
+.modal-overlay.show, .modal-overlay.open{display:flex;}
 @keyframes slideUp{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* Step duration modal */
