@@ -582,7 +582,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 /* ═══════════════════════════════════════════════════
    SEO OPTIMIZATION PANEL
 ═══════════════════════════════════════════════════ */
-.seo-opt-panel{border-top:1px solid var(--border);padding:14px 16px 10px;}
+.seo-opt-panel{border-top:1px solid var(--border);padding:14px 16px 12px;}
 .seo-opt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .seo-opt-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;}
 .seo-opt-score{font-family:'DM Mono',monospace;font-size:11px;color:var(--text);font-weight:500;}
@@ -590,36 +590,26 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 .seo-opt-gauge{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;}
 .seo-opt-gauge-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#f87171,#fbbf24,#34d399);transition:width .4s ease;width:0%;}
 .seo-opt-gauge-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);min-width:28px;text-align:right;}
-.seo-opt-list{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;max-height:180px;overflow-y:auto;}
-.seo-opt-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--s2);}
+.seo-opt-list{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:170px;overflow-y:auto;}
+.seo-opt-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--s2);}
 .seo-opt-badge{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .seo-opt-badge.absent{background:#f87171;}
 .seo-opt-badge.low{background:#fbbf24;}
 .seo-opt-badge.ok{background:#34d399;}
-.seo-opt-word{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
-.seo-opt-count{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
-.seo-opt-action{background:none;border:none;cursor:pointer;font-size:11px;color:var(--accent2);padding:0 2px;font-family:'DM Sans',sans-serif;}
-.seo-opt-action:hover{text-decoration:underline;}
-.seo-opt-suggest-btn{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:linear-gradient(135deg,#f0edff,#e8f5e9);color:#2d2926;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
-.seo-opt-suggest-btn:hover:not(:disabled){border-color:var(--accent);box-shadow:0 2px 8px rgba(149,204,29,.15);}
-.seo-opt-suggest-btn:disabled{opacity:.45;cursor:not-allowed;}
-
-/* ═══════════════════════════════════════════════════
-   SEO SUGGESTION MODAL
-═══════════════════════════════════════════════════ */
-.seo-suggest-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:520px;max-width:94vw;animation:slideUp .18s cubic-bezier(.22,.68,0,1.2);overflow:hidden;}
-.seo-suggest-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);}
-.seo-suggest-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);}
-.seo-suggest-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);margin-top:4px;letter-spacing:.04em;}
-.seo-suggest-body{padding:18px 22px;}
-.seo-suggest-section{margin-bottom:6px;}
-.seo-suggest-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
-.seo-suggest-text{font-family:'DM Sans',sans-serif;font-size:13.5px;line-height:1.75;color:var(--text);padding:12px 14px;border-radius:10px;border:1px solid var(--border);}
-.seo-suggest-original{background:var(--s2);}
-.seo-suggest-improved{background:#f0fdf4;border-color:#bbf7d0;}
-.seo-suggest-improved mark{background:#bbf7d0;color:#166534;border-radius:3px;padding:1px 4px;font-weight:500;}
-.seo-suggest-arrow{text-align:center;font-size:18px;color:var(--muted);padding:4px 0;}
-.seo-suggest-footer{display:flex;gap:8px;padding:14px 22px;border-top:1px solid var(--border);justify-content:flex-end;}
+.seo-opt-word{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:12px;}
+.seo-opt-count{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--muted);flex-shrink:0;}
+.seo-opt-pill{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.05em;padding:2px 5px;border-radius:4px;font-weight:600;flex-shrink:0;}
+.seo-opt-pill.absent{background:#fee2e2;color:#991b1b;}
+.seo-opt-pill.low{background:#fef3c7;color:#92400e;}
+.seo-opt-pill.ok{background:#dcfce7;color:#166534;}
+.seo-opt-actions{display:flex;flex-direction:column;gap:6px;margin-top:6px;}
+.seo-opt-btn{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border);font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;text-align:center;}
+.seo-opt-btn.primary{background:var(--text);color:var(--bg);border-color:var(--text);}
+.seo-opt-btn.primary:hover:not(:disabled){opacity:.9;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+.seo-opt-btn.secondary{background:var(--surface);color:var(--text);}
+.seo-opt-btn.secondary:hover:not(:disabled){background:var(--s2);border-color:var(--border2);}
+.seo-opt-btn:disabled{opacity:.45;cursor:not-allowed;}
+.seo-opt-hint{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.35;}
 </style>
 </head>
 <body>
@@ -688,7 +678,8 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
       <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);">/</span>
       <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Outils</span>
     </div>
-    <div style="display:flex;gap:16px;align-items:center">
+    <div style="display:flex;gap:12px;align-items:center">
+      <button id="admin-hub-link" class="btn" style="display:none;font-size:11px;padding:4px 10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text);" onclick="showView('admin');renderAdminDashboard();">⚙ Admin</button>
       <div id="user-avatar-dash" style="width:32px;height:32px;border-radius:50%;background:var(--text);color:var(--bg);font-family:'DM Mono',monospace;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</div>
       <button class="hub-signout" onclick="authSignOut()">Déconnexion</button>
     </div>
@@ -762,6 +753,8 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 <div class="view" id="view-admin">
   <div class="dash-header">
     <div style="display:flex;align-items:center;gap:10px">
+      <button class="back-btn" onclick="goToDashboard()" style="color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;">← Hub</button>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
       <div class="dash-logo" style="font-family:'DM Mono',monospace;font-size:12px;color:#aaa;">Les outils de MIMI</div>
       <span class="admin-badge">Admin</span>
     </div>
@@ -851,7 +844,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
       <!-- Panneau Optimisation SEO -->
       <div class="seo-opt-panel" id="seo-opt-panel" style="display:none;">
         <div class="seo-opt-header">
-          <span class="seo-opt-title">✨ Optimisation</span>
+          <span class="seo-opt-title">✨ Brief IA SEO</span>
           <span class="seo-opt-score" id="seo-opt-score"></span>
         </div>
         <div class="seo-opt-gauge-wrap">
@@ -861,7 +854,15 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
           <span class="seo-opt-gauge-label" id="seo-opt-gauge-label">0%</span>
         </div>
         <div class="seo-opt-list" id="seo-opt-list"></div>
-        <button class="seo-opt-suggest-btn" id="seo-opt-suggest-btn" onclick="seoSuggestNext()" disabled>✨ Proposition d'amélioration</button>
+        <div class="seo-opt-actions">
+          <button class="seo-opt-btn primary" id="seo-opt-dl-btn" onclick="seoDownloadAIBrief()" title="Télécharger le fichier complet prêt à glisser dans ChatGPT ou Claude">
+            📥 Télécharger le brief IA (.txt)
+          </button>
+          <button class="seo-opt-btn secondary" id="seo-opt-copy-btn" onclick="seoCopyAIPrompt()" title="Copier l'intégralité du prompt dans le presse-papier">
+            📋 Copier le prompt IA
+          </button>
+        </div>
+        <div class="seo-opt-hint">Glissez ce fichier ou collez le prompt dans ChatGPT, Claude ou votre IA.</div>
       </div>
     </div>
 
@@ -1110,31 +1111,6 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
   </div>
 </div>
 
-<!-- ══ MODAL: Suggestion SEO ══ -->
-<div class="modal-overlay" id="seo-suggest-overlay">
-  <div class="seo-suggest-modal">
-    <div class="seo-suggest-header">
-      <div class="seo-suggest-title">Proposition d'amélioration</div>
-      <div class="seo-suggest-sub" id="seo-suggest-keyword"></div>
-    </div>
-    <div class="seo-suggest-body">
-      <div class="seo-suggest-section">
-        <div class="seo-suggest-label">Passage original</div>
-        <div class="seo-suggest-text seo-suggest-original" id="seo-suggest-original"></div>
-      </div>
-      <div class="seo-suggest-arrow">↓</div>
-      <div class="seo-suggest-section">
-        <div class="seo-suggest-label">Passage amélioré</div>
-        <div class="seo-suggest-text seo-suggest-improved" id="seo-suggest-improved"></div>
-      </div>
-    </div>
-    <div class="seo-suggest-footer">
-      <button class="sur-pb-btn" onclick="seoCloseSuggestion()">Ignorer</button>
-      <button class="sur-pb-btn" onclick="seoSkipSuggestion()">Suivant →</button>
-      <button class="sur-pb-btn primary" onclick="seoApplySuggestion()">✓ Appliquer</button>
-    </div>
-  </div>
-</div>
 
 <!-- ══ MODAL: Route sheet preview ══ -->
 <div class="modal-overlay" id="route-sheet-overlay" style="align-items:stretch;justify-content:stretch;padding:0;z-index:5000;">

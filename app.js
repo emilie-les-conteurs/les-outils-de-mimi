@@ -52,9 +52,16 @@ async function saveToSupabase(proj) {
 // VIEWS
 // ═══════════════════════════════════════════════════
 function showView(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show', 'open'));
+  document.querySelectorAll('.view, .view-login').forEach(v => v.classList.remove('active'));
   const viewEl = document.getElementById('view-' + id);
-  if (viewEl) viewEl.classList.add('active');
+  if (viewEl) {
+    viewEl.classList.add('active');
+  } else {
+    const dash = document.getElementById('view-dashboard');
+    if (dash) dash.classList.add('active');
+    id = 'dashboard';
+  }
   try {
     localStorage.setItem('tp_active_view', id);
     if (id !== 'planner') {
@@ -91,18 +98,13 @@ function restoreLastState() {
 }
 
 function goToDashboard() {
-  saveLocal();
+  try { saveLocal(); } catch(e) {}
   try { localStorage.removeItem('tp_active_project_id'); } catch(e) {}
-  if (isAdmin()) {
-    showView('admin');
-    renderAdminDashboard();
-  } else {
-    showView('dashboard');
-  }
+  showView('dashboard');
 }
 
 function goToPlannerHub() {
-  saveLocal();
+  try { saveLocal(); } catch(e) {}
   try { localStorage.removeItem('tp_active_project_id'); } catch(e) {}
   showView('planner-hub');
   renderDashboard();
@@ -120,13 +122,13 @@ function isAdmin() {
 }
 
 function showAppView() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show', 'open'));
   document.querySelectorAll('.view, .view-login').forEach(v => v.classList.remove('active'));
-  if (isAdmin()) {
-    document.getElementById('view-admin').classList.add('active');
-    renderAdminDashboard();
-  } else {
-    document.getElementById('view-dashboard').classList.add('active');
-  }
+  document.getElementById('view-dashboard').classList.add('active');
+  try {
+    localStorage.setItem('tp_active_view', 'dashboard');
+    window.location.hash = 'dashboard';
+  } catch(e) {}
 }
 
 let adminTab = 'projects';
@@ -1770,6 +1772,9 @@ function updateUserUI(user) {
   const dashAvatar = document.getElementById('user-avatar-dash');
   if (dashAvatar) dashAvatar.textContent = initials;
 
+  const adminLink = document.getElementById('admin-hub-link');
+  if (adminLink) adminLink.style.display = isAdmin() ? 'inline-flex' : 'none';
+
   const avatarEl = document.getElementById('user-avatar');
   const labelEl = document.getElementById('user-email-label');
   if (avatarEl) avatarEl.textContent = initials;
@@ -2365,18 +2370,14 @@ function surDownloadPDF() {
 }
 
 // ═══════════════════════════════════════════════════
-// SEO OPTIMIZATION — analyse & suggestions
+// SEO OPTIMIZATION — analyse & export brief IA
 // ═══════════════════════════════════════════════════
-let seoMissingQueue = [];
-let seoCurrentSuggestion = null;
-
 function seoAnalyze() {
   const panel = document.getElementById('seo-opt-panel');
   const list = document.getElementById('seo-opt-list');
   const gauge = document.getElementById('seo-opt-gauge-fill');
   const gaugeLabel = document.getElementById('seo-opt-gauge-label');
   const scoreEl = document.getElementById('seo-opt-score');
-  const suggestBtn = document.getElementById('seo-opt-suggest-btn');
   if (!panel || !list) return;
 
   const text = (document.getElementById('sur-textInput').value || '').trim();
@@ -2386,9 +2387,8 @@ function seoAnalyze() {
   }
   panel.style.display = 'block';
 
-  const textLower = text.toLowerCase();
   const wordCount = text.split(/\s+/).filter(Boolean).length;
-  // Threshold: at least 1 occurrence per 200 words, minimum 2
+  // Seuil cible : 1 occurrence pour 200 mots, minimum 2
   const minTarget = Math.max(2, Math.ceil(wordCount / 200));
 
   const results = [];
@@ -2404,187 +2404,262 @@ function seoAnalyze() {
     results.push({ tag, count, status, index: i });
   });
 
-  // Sort: absent first, then low, then ok
+  // Tri : absent d'abord, puis faible, puis ok
   const order = { absent: 0, low: 1, ok: 2 };
   results.sort((a, b) => order[a.status] - order[b.status] || a.index - b.index);
 
-  // Score: percentage of keywords that are ok or low
+  // Score
   const okCount = results.filter(r => r.status === 'ok').length;
   const lowCount = results.filter(r => r.status === 'low').length;
-  const pct = Math.round(((okCount + lowCount * 0.5) / results.length) * 100);
+  const pct = results.length ? Math.round(((okCount + lowCount * 0.5) / results.length) * 100) : 0;
 
   if (gauge) { gauge.style.width = pct + '%'; }
   if (gaugeLabel) gaugeLabel.textContent = pct + '%';
-  if (scoreEl) scoreEl.textContent = okCount + '/' + results.length;
+  if (scoreEl) scoreEl.textContent = `${okCount}/${results.length} validés`;
 
-  // Build missing queue for suggestions
-  seoMissingQueue = results.filter(r => r.status === 'absent' || r.status === 'low');
-  if (suggestBtn) suggestBtn.disabled = seoMissingQueue.length === 0;
+  const statusLabels = {
+    absent: 'absent',
+    low: 'faible',
+    ok: 'optimal'
+  };
 
-  // Render list
   list.innerHTML = results.map(r => {
-    const actionHtml = r.status !== 'ok'
-      ? `<button class="seo-opt-action" onclick="seoSuggestFor('${r.tag.replace(/'/g, "\\'")}')">Optimiser</button>`
-      : '';
+    const countDisplay = r.status === 'ok'
+      ? `${r.count}×`
+      : `${r.count}/${minTarget}`;
     return `<div class="seo-opt-row">
       <div class="seo-opt-badge ${r.status}"></div>
-      <span class="seo-opt-word">${r.tag}</span>
-      <span class="seo-opt-count">${r.count}×</span>
-      ${actionHtml}
+      <span class="seo-opt-word" title="${r.tag}">${r.tag}</span>
+      <span class="seo-opt-count">${countDisplay}</span>
+      <span class="seo-opt-pill ${r.status}">${statusLabels[r.status]}</span>
     </div>`;
   }).join('');
 }
 
-function seoFindBestSentence(text, keyword) {
-  // Split text into sentences
-  const sentences = text.split(/(?<=[.!?…])\s+|\n+/).filter(s => s.trim().length > 15);
-  if (!sentences.length) return { sentence: text, index: 0 };
-
-  const kwLower = keyword.toLowerCase();
-  const kwRe = new RegExp('(?<![\\wÀ-ÿ])' + surEscReg(keyword) + '(?![\\wÀ-ÿ])', 'gi');
-
-  // Prefer sentences WITHOUT the keyword (to avoid repetition)
-  // Among those, prefer longer sentences (more room for insertion)
-  let candidates = sentences
-    .map((s, i) => ({ s, i, hasKw: kwRe.test(s), len: s.length }))
-    .filter(c => !c.hasKw);
-
-  // Reset regex
-  kwRe.lastIndex = 0;
-
-  if (!candidates.length) {
-    // All sentences have the keyword — pick the one with fewest occurrences
-    candidates = sentences.map((s, i) => {
-      const m = s.match(kwRe) || [];
-      kwRe.lastIndex = 0;
-      return { s, i, count: m.length, len: s.length };
-    });
-    candidates.sort((a, b) => a.count - b.count || b.len - a.len);
-  } else {
-    // Sort by length descending (prefer longer sentences)
-    candidates.sort((a, b) => b.len - a.len);
-  }
-
-  const best = candidates[0];
-  return { sentence: best.s.trim(), index: best.i };
-}
-
-function seoGenerateInsertion(sentence, keyword) {
-  // Strategy: find a natural insertion point in the sentence
-  // Look for patterns where we can add the keyword naturally
-  const kwLower = keyword.toLowerCase();
-  const sLower = sentence.toLowerCase();
-
-  // Already contains the keyword — suggest emphasis
-  if (sLower.includes(kwLower)) {
-    return { improved: sentence, inserted: false };
-  }
-
-  // Try insertion after common French prepositions/articles that precede nouns
-  const insertionPatterns = [
-    // After "de", "du", "des", "le", "la", "les", "un", "une"
-    { re: /\b(de|du|des|le|la|les|un|une|au|aux|en|pour|avec|sur|dans|par|ce|cette|ces|son|sa|ses|leur|leurs|notre|nos|votre|vos)\s+/gi, after: true },
-    // After a comma
-    { re: /,\s+/g, after: true },
-    // Before a period
-    { re: /\s*[.!?]$/g, after: false }
-  ];
-
-  // Find the best insertion point
-  // Simple approach: insert before the last clause (after last comma) or near the end
-  const commaIdx = sentence.lastIndexOf(', ');
-  if (commaIdx > sentence.length * 0.3 && commaIdx < sentence.length - 10) {
-    // Insert near the comma
-    const before = sentence.substring(0, commaIdx + 2);
-    const after = sentence.substring(commaIdx + 2);
-    // Try to make it flow: "..., [en lien avec] keyword, ..."
-    const connectors = ['notamment en matière de', 'en particulier pour', 'y compris'];
-    const connector = connectors[Math.floor(Math.random() * connectors.length)];
-    const improved = before + connector + ' ' + keyword + ', ' + after;
-    return { improved, inserted: true };
-  }
-
-  // Insert before the period at the end
-  const periodMatch = sentence.match(/([.!?…]+)$/);
-  if (periodMatch) {
-    const core = sentence.substring(0, sentence.length - periodMatch[0].length);
-    const connectors = ['en lien avec', 'autour de', 'concernant'];
-    const connector = connectors[Math.floor(Math.random() * connectors.length)];
-    const improved = core + ', ' + connector + ' ' + keyword + periodMatch[0];
-    return { improved, inserted: true };
-  }
-
-  // Fallback: append to end
-  const improved = sentence + ', ' + keyword;
-  return { improved, inserted: true };
-}
-
-function seoSuggestFor(keyword) {
+function seoBuildAIPrompt() {
   const text = (document.getElementById('sur-textInput').value || '').trim();
-  if (!text) return;
+  if (!text) return '';
 
-  const { sentence } = seoFindBestSentence(text, keyword);
-  const { improved, inserted } = seoGenerateInsertion(sentence, keyword);
+  let projName = 'Mon texte SEO';
+  if (surCurrentProjectId && surDb && surDb.projects) {
+    const p = surDb.projects.find(x => x.id === surCurrentProjectId);
+    if (p && p.name) projName = p.name;
+  }
 
-  if (!inserted) {
-    // Already everywhere — nothing to suggest
-    alert('Ce mot-clé est déjà présent dans toutes les phrases du texte.');
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const minTarget = Math.max(2, Math.ceil(wordCount / 200));
+
+  const stats = [];
+  surTags.forEach((tag, i) => {
+    const escaped = surEscReg(tag);
+    const re = new RegExp('(?<![\\wÀ-ÿ])' + escaped + '(?![\\wÀ-ÿ])', 'gi');
+    const matches = text.match(re);
+    const count = matches ? matches.length : 0;
+    let status;
+    if (count === 0) status = 'absent';
+    else if (count < minTarget) status = 'low';
+    else status = 'ok';
+    stats.push({ tag, count, status, index: i });
+  });
+
+  const absents = stats.filter(s => s.status === 'absent');
+  const lows = stats.filter(s => s.status === 'low');
+  const oks = stats.filter(s => s.status === 'ok');
+  const pct = stats.length ? Math.round(((oks.length + lows.length * 0.5) / stats.length) * 100) : 0;
+
+  let prompt = `================================================================================
+BRIEF D'OPTIMISATION ÉDITORIALE & SEO POUR INTELLIGENCE ARTIFICIELLE
+================================================================================
+
+RÔLE ET PERSONA DE L'IA :
+Tu es un rédacteur en chef d'élite, expert en rédaction web éditoriale, en style littéraire français et en référencement naturel (SEO sémantique).
+Ta mission est d'optimiser le texte source fourni ci-dessous en y intégrant harmonieusement les mots-clés cibles manquants ou sous-représentés, tout en sublimant le texte original.
+
+--------------------------------------------------------------------------------
+1. CONSIGNES STRICTES ET NON NÉGOCIABLES (À RESPECTER IMPÉRATIVEMENT)
+--------------------------------------------------------------------------------
+1. RESPECT ABSOLU DE LA TONALITÉ ET DU STYLE :
+   - Analyse minutieusement la voix, l'intention, le rythme, l'émotion et le registre de langue du texte source (style journalistique, immersif, chaleureux, poétique, technique ou professionnel).
+   - Tes ajouts et reformulations doivent se fondre de façon totalement INDÉTECTABLE dans le texte. On ne doit à aucun moment deviner qu'une IA ou un référenceur SEO est passé par là.
+
+2. RESPECT STRICT DU VOLUME DE DÉPART :
+   - Ne gonfle PAS artificiellement le texte. Pas de bavardage, pas de remplissage creux, pas de phrases clichés ("dans un monde où...", "il est indéniable que...").
+   - Le volume global (environ ${wordCount} mots) doit rester quasiment inchangé (+/- 5% maximum).
+
+3. RESPECT TOTAL DE LA VÉRACITÉ ET DES FAITS :
+   - N'invente AUCUN fait, aucun chiffre, aucun lieu, aucun événement ou citation non présent dans le texte source.
+   - Respecte scrupuleusement les informations et la réalité du sujet décrites par l'auteur.
+
+4. INTÉGRATION SÉMANTIQUE NATURELLE (ZÉRO BOURRAGE) :
+   - Aucun bourrage de mots-clés (keyword stuffing).
+   - Chaque mot-clé doit s'insérer avec une justification syntaxique et sémantique parfaite.
+   - Tu as le droit d'adapter légèrement le mot-clé aux contraintes de la langue française (majuscules/minuscules, singulier/pluriel, élisions "d'...", "l'...") si cela garantit une syntaxe irréprochable.
+
+--------------------------------------------------------------------------------
+2. DIAGNOSTIC SEO & LISTE DES MOTS-CLÉS CIBLES
+--------------------------------------------------------------------------------
+• Projet : ${projName}
+• Volume du texte source : ${wordCount} mots
+• Nombre de mots-clés cibles : ${surTags.length}
+• Score d'optimisation initial : ${pct}% (${oks.length}/${surTags.length} mots-clés validés)
+• Cible d'occurrences recommandée pour ce volume : au moins ${minTarget} occurrence(s) par mot-clé`;
+
+  if (absents.length > 0) {
+    prompt += `\n\n[PRIORITÉ 1 : MOTS-CLÉS TOTALEMENT ABSENTS (0 occurrence — à intégrer en priorité)]\n`;
+    absents.forEach(a => {
+      prompt += `- « ${a.tag} » (0 occurrence actuelle — objectif : ${minTarget} occurrence${minTarget > 1 ? 's' : ''})\n`;
+    });
+  }
+
+  if (lows.length > 0) {
+    prompt += `\n[PRIORITÉ 2 : MOTS-CLÉS SOUS-REPRÉSENTÉS (présents mais en dessous de la cible)]\n`;
+    lows.forEach(l => {
+      prompt += `- « ${l.tag} » (${l.count} occurrence${l.count > 1 ? 's' : ''} actuelle${l.count > 1 ? 's' : ''} — objectif : ${minTarget})\n`;
+    });
+  }
+
+  if (oks.length > 0) {
+    prompt += `\n[DÉJÀ BIEN POSITIONNÉS (ne PAS sur-optimiser ni forcer leur répétition)]\n`;
+    oks.forEach(o => {
+      prompt += `- « ${o.tag} » (${o.count} occurrence${o.count > 1 ? 's' : ''} — quota atteint ✓)\n`;
+    });
+  }
+
+  prompt += `\n--------------------------------------------------------------------------------
+3. TEXTE SOURCE À OPTIMISER
+--------------------------------------------------------------------------------
+<<< DÉBUT DU TEXTE SOURCE >>>
+${text}
+<<< FIN DU TEXTE SOURCE >>>
+
+--------------------------------------------------------------------------------
+4. FORMAT DU LIVRABLE ATTENDU DE TA PART
+--------------------------------------------------------------------------------
+Réponds en français avec une présentation claire et structurée en 2 parties :
+
+PARTIE 1 : RECOMMANDATIONS PASSAGE PAR PASSAGE
+Pour chaque mot-clé que tu as intégré ou renforcé, indique précisément :
+• Mot-clé : [Nom du mot-clé]
+  - Passage original : « [Phrase ou extrait d'origine] »
+  - Passage optimisé : « [Phrase réécrite avec le **mot-clé mis en valeur en gras**] »
+  - Justification éditoriale : [Courte phrase expliquant pourquoi cette intégration est naturelle et respecte le ton]
+
+PARTIE 2 : TEXTE COMPLET FINAL RÉVISÉ
+Fournis le texte dans son intégralité du début à la fin, incluant toutes les améliorations apportées, prêt à être copié-collé et publié directement.
+Fais apparaître les mots-clés intégrés en **gras** dans ce texte final afin qu'ils soient immédiatement repérables.
+================================================================================`;
+
+  return prompt;
+}
+
+function seoDownloadAIBrief() {
+  const text = (document.getElementById('sur-textInput').value || '').trim();
+  if (!text) {
+    alert('Veuillez d\'abord saisir ou coller un texte à analyser dans le Surligneur.');
     return;
   }
-
-  seoCurrentSuggestion = { keyword, original: sentence, improved, text };
-
-  // Show modal
-  document.getElementById('seo-suggest-keyword').textContent = 'Mot-clé : « ' + keyword + ' »';
-  document.getElementById('seo-suggest-original').textContent = sentence;
-
-  // Highlight the keyword in the improved version
-  const kwRe = new RegExp('(' + surEscReg(keyword) + ')', 'gi');
-  const improvedHtml = improved.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(kwRe, '<mark>$1</mark>');
-  document.getElementById('seo-suggest-improved').innerHTML = improvedHtml;
-
-  document.getElementById('seo-suggest-overlay').classList.add('show');
-}
-
-function seoSuggestNext() {
-  if (!seoMissingQueue.length) return;
-  // Pick the first missing/low keyword
-  const item = seoMissingQueue[0];
-  seoSuggestFor(item.tag);
-}
-
-function seoSkipSuggestion() {
-  // Move current to end of queue and suggest next
-  if (seoMissingQueue.length > 1) {
-    seoMissingQueue.push(seoMissingQueue.shift());
+  if (!surTags || !surTags.length) {
+    alert('Veuillez ajouter au moins un mot-clé dans la liste des mots-clés.');
+    return;
   }
-  seoCloseSuggestion();
-  setTimeout(() => {
-    if (seoMissingQueue.length) seoSuggestNext();
-  }, 200);
-}
+  const content = seoBuildAIPrompt();
+  if (!content) return;
 
-function seoApplySuggestion() {
-  if (!seoCurrentSuggestion) return;
-  const textarea = document.getElementById('sur-textInput');
-  const text = textarea.value;
-  const { original, improved } = seoCurrentSuggestion;
-
-  // Replace the original sentence with the improved one
-  const newText = text.replace(original, improved);
-  if (newText !== text) {
-    textarea.value = newText;
-    surHighlight();
-    surMarkDirty();
-    seoAnalyze();
+  let baseName = 'texte';
+  if (surCurrentProjectId && surDb && surDb.projects) {
+    const p = surDb.projects.find(x => x.id === surCurrentProjectId);
+    if (p && p.name) baseName = p.name;
   }
-  seoCloseSuggestion();
+  const cleanName = baseName
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'texte';
+
+  const filename = `brief-ia-seo-${cleanName}.txt`;
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function seoCloseSuggestion() {
-  document.getElementById('seo-suggest-overlay').classList.remove('show');
-  seoCurrentSuggestion = null;
+async function seoCopyAIPrompt() {
+  const text = (document.getElementById('sur-textInput').value || '').trim();
+  if (!text) {
+    alert('Veuillez d\'abord saisir ou coller un texte à analyser dans le Surligneur.');
+    return;
+  }
+  if (!surTags || !surTags.length) {
+    alert('Veuillez ajouter au moins un mot-clé dans la liste des mots-clés.');
+    return;
+  }
+  const content = seoBuildAIPrompt();
+  if (!content) return;
+
+  const btn = document.getElementById('seo-opt-copy-btn');
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(content);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = content;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Prompt copié !';
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.color = '#166534';
+      btn.style.background = '#dcfce7';
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.borderColor = '';
+        btn.style.color = '';
+        btn.style.background = '';
+      }, 2500);
+    }
+  } catch(err) {
+    alert('Impossible de copier automatiquement. Vous pouvez utiliser le bouton Télécharger.');
+  }
 }
+
+// ── Gestion globale de la navigation & modales ─────────────────────────────
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.replace('#', '');
+  if (!hash || hash === 'dashboard') {
+    showView('dashboard');
+  } else if (hash === 'surligneur') {
+    showView('surligneur');
+  } else if (hash === 'planner-hub') {
+    goToPlannerHub();
+  } else if (hash === 'admin' && isAdmin()) {
+    showView('admin');
+    renderAdminDashboard();
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('show', 'open');
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.show, .modal-overlay.open').forEach(m => m.classList.remove('show', 'open'));
+  }
+});
 
 document.getElementById('sur-textInput').addEventListener('input', () => { surHighlight(); surMarkDirty(); });
 
