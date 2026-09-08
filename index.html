@@ -578,6 +578,48 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 .smp-suggestions .suggestion-item{padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);}
 .smp-suggestions .suggestion-item:last-child{border-bottom:none;}
 .smp-suggestions .suggestion-item:hover{background:var(--surface);}
+
+/* ═══════════════════════════════════════════════════
+   SEO OPTIMIZATION PANEL
+═══════════════════════════════════════════════════ */
+.seo-opt-panel{border-top:1px solid var(--border);padding:14px 16px 10px;}
+.seo-opt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.seo-opt-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;}
+.seo-opt-score{font-family:'DM Mono',monospace;font-size:11px;color:var(--text);font-weight:500;}
+.seo-opt-gauge-wrap{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.seo-opt-gauge{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.seo-opt-gauge-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#f87171,#fbbf24,#34d399);transition:width .4s ease;width:0%;}
+.seo-opt-gauge-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);min-width:28px;text-align:right;}
+.seo-opt-list{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;max-height:180px;overflow-y:auto;}
+.seo-opt-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--s2);}
+.seo-opt-badge{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.seo-opt-badge.absent{background:#f87171;}
+.seo-opt-badge.low{background:#fbbf24;}
+.seo-opt-badge.ok{background:#34d399;}
+.seo-opt-word{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+.seo-opt-count{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
+.seo-opt-action{background:none;border:none;cursor:pointer;font-size:11px;color:var(--accent2);padding:0 2px;font-family:'DM Sans',sans-serif;}
+.seo-opt-action:hover{text-decoration:underline;}
+.seo-opt-suggest-btn{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:linear-gradient(135deg,#f0edff,#e8f5e9);color:#2d2926;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.seo-opt-suggest-btn:hover:not(:disabled){border-color:var(--accent);box-shadow:0 2px 8px rgba(149,204,29,.15);}
+.seo-opt-suggest-btn:disabled{opacity:.45;cursor:not-allowed;}
+
+/* ═══════════════════════════════════════════════════
+   SEO SUGGESTION MODAL
+═══════════════════════════════════════════════════ */
+.seo-suggest-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:520px;max-width:94vw;animation:slideUp .18s cubic-bezier(.22,.68,0,1.2);overflow:hidden;}
+.seo-suggest-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);}
+.seo-suggest-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);}
+.seo-suggest-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);margin-top:4px;letter-spacing:.04em;}
+.seo-suggest-body{padding:18px 22px;}
+.seo-suggest-section{margin-bottom:6px;}
+.seo-suggest-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.seo-suggest-text{font-family:'DM Sans',sans-serif;font-size:13.5px;line-height:1.75;color:var(--text);padding:12px 14px;border-radius:10px;border:1px solid var(--border);}
+.seo-suggest-original{background:var(--s2);}
+.seo-suggest-improved{background:#f0fdf4;border-color:#bbf7d0;}
+.seo-suggest-improved mark{background:#bbf7d0;color:#166534;border-radius:3px;padding:1px 4px;font-weight:500;}
+.seo-suggest-arrow{text-align:center;font-size:18px;color:var(--muted);padding:4px 0;}
+.seo-suggest-footer{display:flex;gap:8px;padding:14px 22px;border-top:1px solid var(--border);justify-content:flex-end;}
 </style>
 </head>
 <body>
@@ -796,7 +838,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
       </div>
     </div>
 
-    <!-- DROITE : occurrences triées -->
+    <!-- DROITE : occurrences + optimisation -->
     <div class="sur-sidebar">
       <div class="sur-sidebar-header">
         <span class="sur-sidebar-title">Occurrences</span>
@@ -804,6 +846,22 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
       </div>
       <div class="sur-sidebar-body" id="sur-wordlist">
         <span class="sur-wordlist-empty">Aucun mot ajouté.</span>
+      </div>
+
+      <!-- Panneau Optimisation SEO -->
+      <div class="seo-opt-panel" id="seo-opt-panel" style="display:none;">
+        <div class="seo-opt-header">
+          <span class="seo-opt-title">✨ Optimisation</span>
+          <span class="seo-opt-score" id="seo-opt-score"></span>
+        </div>
+        <div class="seo-opt-gauge-wrap">
+          <div class="seo-opt-gauge">
+            <div class="seo-opt-gauge-fill" id="seo-opt-gauge-fill"></div>
+          </div>
+          <span class="seo-opt-gauge-label" id="seo-opt-gauge-label">0%</span>
+        </div>
+        <div class="seo-opt-list" id="seo-opt-list"></div>
+        <button class="seo-opt-suggest-btn" id="seo-opt-suggest-btn" onclick="seoSuggestNext()" disabled>✨ Proposition d'amélioration</button>
       </div>
     </div>
 
@@ -3361,6 +3419,32 @@ try {
     <div class="sur-modal-footer">
       <button class="sur-pb-btn" onclick="surCloseRenameProjectModal()">Annuler</button>
       <button class="sur-pb-btn primary" onclick="surRenameProjectFromModal()">Renommer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Suggestion SEO ══ -->
+<div class="modal-overlay" id="seo-suggest-overlay">
+  <div class="seo-suggest-modal">
+    <div class="seo-suggest-header">
+      <div class="seo-suggest-title">Proposition d'amélioration</div>
+      <div class="seo-suggest-sub" id="seo-suggest-keyword"></div>
+    </div>
+    <div class="seo-suggest-body">
+      <div class="seo-suggest-section">
+        <div class="seo-suggest-label">Passage original</div>
+        <div class="seo-suggest-text seo-suggest-original" id="seo-suggest-original"></div>
+      </div>
+      <div class="seo-suggest-arrow">↓</div>
+      <div class="seo-suggest-section">
+        <div class="seo-suggest-label">Passage amélioré</div>
+        <div class="seo-suggest-text seo-suggest-improved" id="seo-suggest-improved"></div>
+      </div>
+    </div>
+    <div class="seo-suggest-footer">
+      <button class="sur-pb-btn" onclick="seoCloseSuggestion()">Ignorer</button>
+      <button class="sur-pb-btn" onclick="seoSkipSuggestion()">Suivant →</button>
+      <button class="sur-pb-btn primary" onclick="seoApplySuggestion()">✓ Appliquer</button>
     </div>
   </div>
 </div>

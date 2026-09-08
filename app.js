@@ -2272,6 +2272,7 @@ function _surHighlightNow() {
   meta.textContent = total > 0 ? `${total} occurrence${total > 1 ? 's' : ''}` : '';
   if (totalWords) totalWords.textContent = `${sorted.length} mot${sorted.length > 1 ? 's' : ''}`;
   if (dlBtn) dlBtn.disabled = !(total > 0);
+  seoAnalyze();
 }
 
 function surWordRow(word, c, count, max) {
@@ -2361,6 +2362,228 @@ function surDownloadPDF() {
   win.document.write(pdfHtml);
   win.document.close();
   win.onload = () => { win.focus(); win.print(); };
+}
+
+// ═══════════════════════════════════════════════════
+// SEO OPTIMIZATION — analyse & suggestions
+// ═══════════════════════════════════════════════════
+let seoMissingQueue = [];
+let seoCurrentSuggestion = null;
+
+function seoAnalyze() {
+  const panel = document.getElementById('seo-opt-panel');
+  const list = document.getElementById('seo-opt-list');
+  const gauge = document.getElementById('seo-opt-gauge-fill');
+  const gaugeLabel = document.getElementById('seo-opt-gauge-label');
+  const scoreEl = document.getElementById('seo-opt-score');
+  const suggestBtn = document.getElementById('seo-opt-suggest-btn');
+  if (!panel || !list) return;
+
+  const text = (document.getElementById('sur-textInput').value || '').trim();
+  if (!text || !surTags.length) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+
+  const textLower = text.toLowerCase();
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  // Threshold: at least 1 occurrence per 200 words, minimum 2
+  const minTarget = Math.max(2, Math.ceil(wordCount / 200));
+
+  const results = [];
+  surTags.forEach((tag, i) => {
+    const escaped = surEscReg(tag);
+    const re = new RegExp('(?<![\\wÀ-ÿ])' + escaped + '(?![\\wÀ-ÿ])', 'gi');
+    const matches = text.match(re);
+    const count = matches ? matches.length : 0;
+    let status;
+    if (count === 0) status = 'absent';
+    else if (count < minTarget) status = 'low';
+    else status = 'ok';
+    results.push({ tag, count, status, index: i });
+  });
+
+  // Sort: absent first, then low, then ok
+  const order = { absent: 0, low: 1, ok: 2 };
+  results.sort((a, b) => order[a.status] - order[b.status] || a.index - b.index);
+
+  // Score: percentage of keywords that are ok or low
+  const okCount = results.filter(r => r.status === 'ok').length;
+  const lowCount = results.filter(r => r.status === 'low').length;
+  const pct = Math.round(((okCount + lowCount * 0.5) / results.length) * 100);
+
+  if (gauge) { gauge.style.width = pct + '%'; }
+  if (gaugeLabel) gaugeLabel.textContent = pct + '%';
+  if (scoreEl) scoreEl.textContent = okCount + '/' + results.length;
+
+  // Build missing queue for suggestions
+  seoMissingQueue = results.filter(r => r.status === 'absent' || r.status === 'low');
+  if (suggestBtn) suggestBtn.disabled = seoMissingQueue.length === 0;
+
+  // Render list
+  list.innerHTML = results.map(r => {
+    const actionHtml = r.status !== 'ok'
+      ? `<button class="seo-opt-action" onclick="seoSuggestFor('${r.tag.replace(/'/g, "\\'")}')">Optimiser</button>`
+      : '';
+    return `<div class="seo-opt-row">
+      <div class="seo-opt-badge ${r.status}"></div>
+      <span class="seo-opt-word">${r.tag}</span>
+      <span class="seo-opt-count">${r.count}×</span>
+      ${actionHtml}
+    </div>`;
+  }).join('');
+}
+
+function seoFindBestSentence(text, keyword) {
+  // Split text into sentences
+  const sentences = text.split(/(?<=[.!?…])\s+|\n+/).filter(s => s.trim().length > 15);
+  if (!sentences.length) return { sentence: text, index: 0 };
+
+  const kwLower = keyword.toLowerCase();
+  const kwRe = new RegExp('(?<![\\wÀ-ÿ])' + surEscReg(keyword) + '(?![\\wÀ-ÿ])', 'gi');
+
+  // Prefer sentences WITHOUT the keyword (to avoid repetition)
+  // Among those, prefer longer sentences (more room for insertion)
+  let candidates = sentences
+    .map((s, i) => ({ s, i, hasKw: kwRe.test(s), len: s.length }))
+    .filter(c => !c.hasKw);
+
+  // Reset regex
+  kwRe.lastIndex = 0;
+
+  if (!candidates.length) {
+    // All sentences have the keyword — pick the one with fewest occurrences
+    candidates = sentences.map((s, i) => {
+      const m = s.match(kwRe) || [];
+      kwRe.lastIndex = 0;
+      return { s, i, count: m.length, len: s.length };
+    });
+    candidates.sort((a, b) => a.count - b.count || b.len - a.len);
+  } else {
+    // Sort by length descending (prefer longer sentences)
+    candidates.sort((a, b) => b.len - a.len);
+  }
+
+  const best = candidates[0];
+  return { sentence: best.s.trim(), index: best.i };
+}
+
+function seoGenerateInsertion(sentence, keyword) {
+  // Strategy: find a natural insertion point in the sentence
+  // Look for patterns where we can add the keyword naturally
+  const kwLower = keyword.toLowerCase();
+  const sLower = sentence.toLowerCase();
+
+  // Already contains the keyword — suggest emphasis
+  if (sLower.includes(kwLower)) {
+    return { improved: sentence, inserted: false };
+  }
+
+  // Try insertion after common French prepositions/articles that precede nouns
+  const insertionPatterns = [
+    // After "de", "du", "des", "le", "la", "les", "un", "une"
+    { re: /\b(de|du|des|le|la|les|un|une|au|aux|en|pour|avec|sur|dans|par|ce|cette|ces|son|sa|ses|leur|leurs|notre|nos|votre|vos)\s+/gi, after: true },
+    // After a comma
+    { re: /,\s+/g, after: true },
+    // Before a period
+    { re: /\s*[.!?]$/g, after: false }
+  ];
+
+  // Find the best insertion point
+  // Simple approach: insert before the last clause (after last comma) or near the end
+  const commaIdx = sentence.lastIndexOf(', ');
+  if (commaIdx > sentence.length * 0.3 && commaIdx < sentence.length - 10) {
+    // Insert near the comma
+    const before = sentence.substring(0, commaIdx + 2);
+    const after = sentence.substring(commaIdx + 2);
+    // Try to make it flow: "..., [en lien avec] keyword, ..."
+    const connectors = ['notamment en matière de', 'en particulier pour', 'y compris'];
+    const connector = connectors[Math.floor(Math.random() * connectors.length)];
+    const improved = before + connector + ' ' + keyword + ', ' + after;
+    return { improved, inserted: true };
+  }
+
+  // Insert before the period at the end
+  const periodMatch = sentence.match(/([.!?…]+)$/);
+  if (periodMatch) {
+    const core = sentence.substring(0, sentence.length - periodMatch[0].length);
+    const connectors = ['en lien avec', 'autour de', 'concernant'];
+    const connector = connectors[Math.floor(Math.random() * connectors.length)];
+    const improved = core + ', ' + connector + ' ' + keyword + periodMatch[0];
+    return { improved, inserted: true };
+  }
+
+  // Fallback: append to end
+  const improved = sentence + ', ' + keyword;
+  return { improved, inserted: true };
+}
+
+function seoSuggestFor(keyword) {
+  const text = (document.getElementById('sur-textInput').value || '').trim();
+  if (!text) return;
+
+  const { sentence } = seoFindBestSentence(text, keyword);
+  const { improved, inserted } = seoGenerateInsertion(sentence, keyword);
+
+  if (!inserted) {
+    // Already everywhere — nothing to suggest
+    alert('Ce mot-clé est déjà présent dans toutes les phrases du texte.');
+    return;
+  }
+
+  seoCurrentSuggestion = { keyword, original: sentence, improved, text };
+
+  // Show modal
+  document.getElementById('seo-suggest-keyword').textContent = 'Mot-clé : « ' + keyword + ' »';
+  document.getElementById('seo-suggest-original').textContent = sentence;
+
+  // Highlight the keyword in the improved version
+  const kwRe = new RegExp('(' + surEscReg(keyword) + ')', 'gi');
+  const improvedHtml = improved.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(kwRe, '<mark>$1</mark>');
+  document.getElementById('seo-suggest-improved').innerHTML = improvedHtml;
+
+  document.getElementById('seo-suggest-overlay').classList.add('show');
+}
+
+function seoSuggestNext() {
+  if (!seoMissingQueue.length) return;
+  // Pick the first missing/low keyword
+  const item = seoMissingQueue[0];
+  seoSuggestFor(item.tag);
+}
+
+function seoSkipSuggestion() {
+  // Move current to end of queue and suggest next
+  if (seoMissingQueue.length > 1) {
+    seoMissingQueue.push(seoMissingQueue.shift());
+  }
+  seoCloseSuggestion();
+  setTimeout(() => {
+    if (seoMissingQueue.length) seoSuggestNext();
+  }, 200);
+}
+
+function seoApplySuggestion() {
+  if (!seoCurrentSuggestion) return;
+  const textarea = document.getElementById('sur-textInput');
+  const text = textarea.value;
+  const { original, improved } = seoCurrentSuggestion;
+
+  // Replace the original sentence with the improved one
+  const newText = text.replace(original, improved);
+  if (newText !== text) {
+    textarea.value = newText;
+    surHighlight();
+    surMarkDirty();
+    seoAnalyze();
+  }
+  seoCloseSuggestion();
+}
+
+function seoCloseSuggestion() {
+  document.getElementById('seo-suggest-overlay').classList.remove('show');
+  seoCurrentSuggestion = null;
 }
 
 document.getElementById('sur-textInput').addEventListener('input', () => { surHighlight(); surMarkDirty(); });
