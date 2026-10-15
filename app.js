@@ -1627,10 +1627,28 @@ function showLoginView() {
   document.getElementById('view-login').classList.add('active');
 }
 
+function formatAuthError(msg) {
+  if (!msg) return '';
+  const m = String(msg);
+  if (m.toLowerCase().includes('failed to fetch') || m.toLowerCase().includes('networkerror') || m.toLowerCase().includes('network request failed')) {
+    return 'Connexion impossible : le serveur Supabase ne répond pas. Votre projet Supabase est très probablement en pause pour inactivité sur supabase.com.';
+  }
+  if (m.includes('Invalid login') || m.includes('invalid_credentials')) {
+    return 'Email ou mot de passe incorrect';
+  }
+  if (m.includes('Email not confirmed')) {
+    return 'Confirmez votre email avant de vous connecter';
+  }
+  if (m.includes('User already registered')) {
+    return 'Un compte existe déjà avec cet email.';
+  }
+  return msg;
+}
+
 function setAuthError(msg) {
   const el = document.getElementById('auth-error');
   if (el) {
-    el.textContent = msg;
+    el.textContent = formatAuthError(msg);
     el.classList.toggle('show', !!msg);
   }
 }
